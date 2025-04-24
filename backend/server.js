@@ -7,10 +7,13 @@ const fs = require('fs');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Redmine 配置 (从环境变量或配置文件读取更佳)
-const REDMINE_URL = 'http://task.gyist.com';
-const REDMINE_API_KEY = 'ebb5a8b50073bcf4791bd65b563114b5a455364e';
-const REDMINE_PROJECT_ID = 'feedback';
+// 加载环境变量
+require('dotenv').config();
+
+// Redmine 配置
+const REDMINE_URL = process.env.REDMINE_URL;
+const REDMINE_API_KEY = process.env.REDMINE_API_KEY;
+const REDMINE_PROJECT_ID = process.env.REDMINE_PROJECT_ID;
 
 // 创建 uploads 目录 (如果不存在)
 const uploadsDir = path.join(__dirname, 'uploads');
