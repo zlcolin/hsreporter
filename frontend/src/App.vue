@@ -64,6 +64,32 @@
           </div>
         </div>
 
+        <!-- 验证码 -->
+        <div class="mb-6">
+          <label class="block text-gray-700 text-sm font-bold mb-2">验证码 <span class="text-red-500">*</span></label>
+          <div class="flex items-center space-x-4">
+            <div class="flex-1">
+              <input
+                type="text"
+                v-model="captchaInput"
+                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="请输入计算结果"
+              />
+              <p v-if="errors.captcha" class="text-red-500 text-xs mt-1">{{ errors.captcha }}</p>
+            </div>
+            <div class="bg-gray-200 px-4 py-2 rounded-md text-gray-700 font-medium">
+              {{ captchaQuestion }}
+            </div>
+            <button 
+              type="button" 
+              @click="generateCaptcha"
+              class="text-blue-500 hover:text-blue-700 text-sm"
+            >
+              换一个
+            </button>
+          </div>
+        </div>
+
         <!-- 文件上传 -->
         <div class="mb-6">
           <label class="block text-gray-700 text-sm font-bold mb-2">上传截图/录屏 (最多3个, 支持jpg, png, gif, mkv, mp4)</label>
@@ -118,7 +144,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import axios from 'axios';
 
 interface FormData {
@@ -142,6 +168,7 @@ interface Errors {
   contactHsId?: string;
   contactPhone?: string;
   files?: string;
+  captcha?: string;
 }
 
 const issueTypes = [
@@ -163,6 +190,22 @@ const errors = reactive<Errors>({});
 const isSubmitting = ref(false);
 const submitResult = ref<SubmitResult | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
+const captchaInput = ref('');
+const captchaAnswer = ref(0);
+const captchaQuestion = ref('');
+
+// 生成验证码
+const generateCaptcha = () => {
+  const num1 = Math.floor(Math.random() * 10) + 1;
+  const num2 = Math.floor(Math.random() * 10) + 1;
+  captchaQuestion.value = `${num1} + ${num2} = ?`;
+  captchaAnswer.value = num1 + num2;
+};
+
+// 初始化时生成验证码
+onMounted(() => {
+  generateCaptcha();
+});
 
 const descriptionPlaceholder = computed(() => {
   switch (formData.issueType) {
@@ -181,6 +224,12 @@ const validateForm = (): boolean => {
   // 清空之前的错误
   Object.keys(errors).forEach(key => delete errors[key as keyof Errors]);
   let isValid = true;
+
+  // 验证验证码
+  if (parseInt(captchaInput.value) !== captchaAnswer.value) {
+(errors as any).captcha = '验证码错误';
+    isValid = false;
+  }
 
   if (!formData.issueType) {
     errors.issueType = '请选择问题类型';
