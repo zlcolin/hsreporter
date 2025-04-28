@@ -3,6 +3,7 @@ const multer = require('multer');
 const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
+const captchaRouter = require('./captcha');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -27,8 +28,10 @@ const storage = multer.diskStorage({
     cb(null, uploadsDir); // 文件存储路径
   },
   filename: function (req, file, cb) {
+    // 对中文文件名进行编码处理
+    const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
     // 保留原始文件名，添加时间戳防止重名
-    cb(null, Date.now() + '-' + file.originalname);
+    cb(null, Date.now() + '-' + originalName);
   }
 });
 
@@ -54,6 +57,8 @@ app.use(express.urlencoded({ extended: true })); // 解析 URL 编码的请求�
 app.use('/uploads', express.static(uploadsDir)); // 静态文件服务，用于访问上传的文件
 
 // API 路由
+app.use('/api/captcha', captchaRouter);
+
 app.post('/api/submit', (req, res) => {
   upload(req, res, async (err) => {
     if (err instanceof multer.MulterError) {
@@ -88,12 +93,15 @@ app.post('/api/submit', (req, res) => {
       if (files && files.length > 0) {
         for (const file of files) {
           const fileData = fs.readFileSync(file.path);
+          // 对上传到Redmine的文件名进行编码处理
+          const encodedFilename = encodeURIComponent(file.originalname);
           const uploadResponse = await axios.post(`${REDMINE_URL}/uploads.json`,
             fileData,
             {
               headers: {
                 'X-Redmine-API-Key': REDMINE_API_KEY,
-                'Content-Type': 'application/octet-stream'
+                'Content-Type': 'application/octet-stream',
+                'Content-Disposition': `attachment; filename*=UTF-8''${encodedFilename}`
               }
             }
           );
