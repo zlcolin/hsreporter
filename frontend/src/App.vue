@@ -85,10 +85,12 @@
               class="hidden"
               accept=".jpg,.jpeg,.png,.gif,.mkv,.mp4"
             />
-            <div class="flex flex-col items-center justify-center">
+            <div class="flex flex-col items-center justify-center py-4">
               <div class="text-gray-400 group-hover:text-blue-500 transition-colors duration-200">
-                <p class="text-sm font-medium group-hover:text-blue-600">添加文件</p>
-                <p class="text-xs mt-1 group-hover:text-blue-400">支持 .jpg、.png、.gif、.mkv 或 mp4 格式，最多3个文件</p>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-1.2 w-1.2 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                <p class="text-xs text-center group-hover:text-blue-400">支持 .jpg、.png、.gif、.mkv 或 mp4 格式，最多3个文件</p>
               </div>
             </div>
           </div>
