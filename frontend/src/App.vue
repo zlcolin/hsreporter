@@ -205,9 +205,9 @@ interface Errors {
 
 const issueTypes = [
   { 
-    label: '提交 Bug', 
-    value: '提交 Bug',
-    description: '报告软件中的问题，如遇到 Bug 类的问题，可先查阅官方 FAQ 文档'
+    label: '提交Bug', 
+    value: '提交Bug',
+    description: '报告软件中的问题，如遇到Bug类的问题，可先查阅官方FAQ文档'
   },
   { 
     label: '我要吐槽', 
@@ -222,7 +222,7 @@ const issueTypes = [
 ];
 
 const formData = reactive<FormData>({
-  issueType: '提交 Bug', // 默认值
+  issueType: '提交Bug', // 默认值
   description: '',
   contactInfo: '',
   files: [],
@@ -244,7 +244,7 @@ const descriptionPlaceholder = computed(() => {
     case '提交 Bug':
       return '[问题描述]:\n[复现步骤]:\n[预期结果]:\n[实际结果]:\n';
     case '我要吐槽':
-      return '和 AI 对话相关反馈，最好可以站在信息交流角度';
+      return '和AI对话相关反馈，最好可以站在信息交流角度';
     case '我有好想法':
       return '提议新功能或者改进现有功能';
     default:
@@ -275,10 +275,10 @@ const refreshCaptcha = async () => {
     // 直接从response.data中获取数据
     const { imageUrl, captchaId } = response.data;
     if (!imageUrl) {
-      throw new Error('响应数据格式错误：缺少 imageUrl');
+      throw new Error('响应数据格式错误：缺少imageUrl');
     }
     if (!captchaId) {
-      throw new Error('响应数据格式错误：缺少 captchaId');
+      throw new Error('响应数据格式错误：缺少captchaId');
     }
     
     captchaUrl.value = imageUrl;
@@ -319,7 +319,7 @@ const validateForm = (): boolean => {
   }
 
   if (formData.files.length > 3) {
-    errors.files = '最多只能上传 3 个文件';
+    errors.files = '最多只能上传3个文件';
     isValid = false;
   }
 
@@ -390,7 +390,7 @@ const submitForm = async () => {
 };
 
 const resetForm = () => {
-  formData.issueType = '提交 Bug';
+  formData.issueType = '提交Bug';
   formData.description = '';
   formData.contactInfo = '';
   formData.files = [];
@@ -435,7 +435,7 @@ const addFiles = (newFiles: File[]) => {
 
   const totalFiles = formData.files.length + validFiles.length;
   if (totalFiles > 3) {
-    errors.files = '最多只能上传 3 个文件';
+    errors.files = '最多只能上传3个文件';
     // 只添加允许数量的文件
     const remainingSlots = 3 - formData.files.length;
     if (remainingSlots > 0) {
@@ -444,7 +444,7 @@ const addFiles = (newFiles: File[]) => {
   } else {
     formData.files.push(...validFiles);
     // 如果之前有数量错误，现在数量合法了，清除错误
-    if (errors.files === '最多只能上传 3 个文件') {
+    if (errors.files === '最多只能上传3个文件') {
         delete errors.files;
     }
   }
@@ -453,7 +453,7 @@ const addFiles = (newFiles: File[]) => {
 const removeFile = (index: number) => {
   formData.files.splice(index, 1);
   // 如果移除文件后数量合法，清除数量错误
-  if (formData.files.length <= 3 && errors.files === '最多只能上传 3 个文件') {
+  if (formData.files.length <= 3 && errors.files === '最多只能上传3个文件') {
       delete errors.files;
   }
 };
