@@ -1,3 +1,4 @@
-@tailwind base;
+/* 移除以下导入语句 */
+/* @tailwind base;
 @tailwind components;
-@tailwind utilities;
+@tailwind utilities; */
