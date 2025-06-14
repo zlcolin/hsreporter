@@ -52,7 +52,7 @@ router.post('/verify', (req, res) => {
     const { sessionId, code } = req.body;
 
     if (!sessionId || !code) {
-        return res.status(400).json({ success: false, message: '验证码或会话ID不能为空' });
+        return res.status(400).json({ success: false, message: '请填入图片验证码' });
     }
 
     const captchaData = captchaStore.get(sessionId);
@@ -71,4 +71,4 @@ router.post('/verify', (req, res) => {
     });
 });
 
-module.exports = router;
+module.exports = { router, captchaStore };

@@ -5,17 +5,20 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "./node_modules/.bin/vue-tsc -b && vite build",
+    "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
     "@vitejs/plugin-vue": "^5.2.2",
     "@vue/tsconfig": "^0.7.0",
-    "axios": "^1.8.4",
+    "axios": "^1.6.2",
+    "element-plus": "^2.4.1",
+    "vue": "^3.4.27",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "typescript": "~5.7.2",
     "vite": "^6.3.1",
+    "vue-element-plus-x": "^1.2.0",
     "vue-tsc": "^2.2.8"
   },
   "devDependencies": {

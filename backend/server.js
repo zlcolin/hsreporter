@@ -3,7 +3,7 @@ const multer = require('multer');
 const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
-const captchaRouter = require('./captcha');
+const { router: captchaRouter, captchaStore } = require('./captcha');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -59,32 +59,77 @@ app.use('/uploads', express.static(uploadsDir)); // 静态文件服务，用于�
 // API 路由
 app.use('/api/captcha', captchaRouter);
 
+// 模拟验证码验证函数，实际使用时需根据 captchaRouter 实现修改
+const verifyCaptcha = async (captchaId, captcha) => {
+  const captchaData = captchaStore.get(captchaId);
+  if (!captchaData) {
+    return false; // 验证码不存在
+  }
+  const now = Date.now();
+  if (now - captchaData.timestamp > 5 * 60 * 1000) { // 5分钟过期
+    captchaStore.delete(captchaId); // 删除过期验证码
+    return false;
+  }
+  const isValid = captcha === captchaData.code;
+  if (isValid) {
+    captchaStore.delete(captchaId); // 验证成功后删除，防止重复使用
+  }
+  return isValid;
+};
+
 app.post('/api/submit', (req, res) => {
   upload(req, res, async (err) => {
     if (err instanceof multer.MulterError) {
-      // Multer 错误
+      console.error('Multer 错误:', err.message);
       return res.status(400).json({ message: 'File upload error: ' + err.message });
     } else if (err) {
-      // 其他错误 (例如文件类型不允许)
+      console.error('其他文件上传错误:', err);
       return res.status(400).json({ message: err });
     }
 
-    // 文件上传成功，处理表单数据
-    const { issueType, description, contactEmail, contactHsId, contactPhone } = req.body;
+    console.log('接收到的原始请求体:', req.body);
+    console.log('接收到的文件:', req.files);
+
+    // 解构赋值前先检查 req.body 是否存在
+    const { issueType, description, contactInfo, captcha, captchaId } = req.body || {};
     const files = req.files;
 
     // 验证必填字段
     if (!issueType || !description) {
+      console.error('必填字段缺失，issueType:', issueType, 'description:', description);
       return res.status(400).json({ message: 'Issue type and description are required.' });
     }
 
-    // 验证联系方式格式 (可选)
-    const phoneRegex = /^\d{11}$/;
-    if (contactHsId && !phoneRegex.test(contactHsId)) {
-        return res.status(400).json({ message: 'Invalid HS ID format. Must be 11 digits.' });
+    // 验证验证码
+    if (!captchaId || !captcha) {
+      console.error('验证码信息缺失，captchaId:', captchaId, 'captcha:', captcha);
+      return res.status(400).json({ message: '验证码信息缺失，请重新获取验证码。' });
     }
-    if (contactPhone && !phoneRegex.test(contactPhone)) {
-        return res.status(400).json({ message: 'Invalid phone number format. Must be 11 digits.' });
+    const isCaptchaValid = await verifyCaptcha(captchaId, captcha);
+    if (!isCaptchaValid) {
+      console.error('验证码验证失败，captchaId:', captchaId, 'captcha:', captcha);
+      return res.status(400).json({ message: '验证码验证失败，请重新输入。' });
+    }
+
+    // 解析联系方式
+    let contactEmail, contactHsId, contactPhone;
+    if (contactInfo) {
+      const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+      const phoneRegex = /^\d{11}$/;
+
+      contactEmail = contactInfo.match(emailRegex)?.[0];
+      contactHsId = contactInfo.match(phoneRegex)?.[0];
+      contactPhone = contactInfo.match(phoneRegex)?.[0];
+    }
+
+    // 验证联系方式格式 (可选)
+    if (contactHsId && !/^\d{11}$/.test(contactHsId)) {
+      console.error('互生号格式错误:', contactHsId);
+      return res.status(400).json({ message: 'Invalid HS Id format. Must be 11 digits.' });
+    }
+    if (contactPhone && !/^\d{11}$/.test(contactPhone)) {
+      console.error('电话号码格式错误:', contactPhone);
+      return res.status(400).json({ message: 'Invalid phone number format. Must be 11 digits.' });
     }
 
     try {
