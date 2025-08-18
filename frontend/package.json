@@ -5,23 +5,51 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "type-check": "vue-tsc --noEmit",
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix",
+    "lint:check": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts",
+    "format": "prettier --write src/",
+    "format:check": "prettier --check src/",
+    "prepare": "husky"
   },
   "dependencies": {
     "@vitejs/plugin-vue": "^5.2.2",
     "@vue/tsconfig": "^0.7.0",
-    "axios": "^1.6.2",
+    "@vueuse/core": "^13.6.0",
+    "axios": "^1.11.0",
     "element-plus": "^2.4.1",
-    "vue": "^3.4.27",
+    "pinia": "^3.0.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "typescript": "~5.7.2",
     "vite": "^6.3.1",
+    "vue": "^3.4.27",
     "vue-element-plus-x": "^1.2.0",
     "vue-tsc": "^2.2.8"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.39.1",
+    "@typescript-eslint/parser": "^8.39.1",
+    "@vue/eslint-config-prettier": "^10.2.0",
+    "@vue/eslint-config-typescript": "^14.6.0",
+    "eslint": "^9.33.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-vue": "^10.4.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.5",
+    "prettier": "^3.6.2",
     "webpack": "^5.88.2"
+  },
+  "lint-staged": {
+    "*.{vue,js,ts}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{css,scss,html,md}": [
+      "prettier --write"
+    ]
   }
 }

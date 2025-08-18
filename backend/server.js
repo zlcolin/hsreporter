@@ -3,6 +3,14 @@ const multer = require('multer');
 const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
+// Old captcha system replaced with TypeScript version
+// const { router: captchaRouter, captchaStore } = require('./captcha');
+
+// Import the new TypeScript captcha system (when compiled)
+// const { captchaRoutes } = require('./dist/routes/captchaRoutes');
+// const { CaptchaService } = require('./dist/services/captchaService');
+
+// For now, keep the old system for compatibility
 const { router: captchaRouter, captchaStore } = require('./captcha');
 
 const app = express();
@@ -57,25 +65,43 @@ app.use(express.urlencoded({ extended: true })); // 解析 URL 编码的请求�
 app.use('/uploads', express.static(uploadsDir)); // 静态文件服务，用于访问上传的文件
 
 // API 路由
+// Use the improved captcha routes
 app.use('/api/captcha', captchaRouter);
+// TODO: Replace with: app.use('/api/v1/captcha', captchaRoutes);
 
-// 模拟验证码验证函数，实际使用时需根据 captchaRouter 实现修改
+
+// Enhanced captcha verification function
 const verifyCaptcha = async (captchaId, captcha) => {
-  const captchaData = captchaStore.get(captchaId);
-  if (!captchaData) {
-    return false; // 验证码不存在
-  }
-  const now = Date.now();
-  if (now - captchaData.timestamp > 5 * 60 * 1000) { // 5分钟过期
-    captchaStore.delete(captchaId); // 删除过期验证码
+  try {
+    // Use the old system for now, but with improved error handling
+    const captchaData = captchaStore.get(captchaId);
+    if (!captchaData) {
+      console.warn('Captcha verification failed: captcha not found', { captchaId });
+      return false;
+    }
+    
+    const now = Date.now();
+    if (now - captchaData.timestamp > 5 * 60 * 1000) { // 5分钟过期
+      captchaStore.delete(captchaId);
+      console.warn('Captcha verification failed: captcha expired', { captchaId });
+      return false;
+    }
+    
+    const isValid = captcha === captchaData.code;
+    
+    if (isValid) {
+      captchaStore.delete(captchaId);
+      console.info('Captcha verification successful', { captchaId });
+    } else {
+      console.warn('Captcha verification failed: invalid code', { captchaId });
+    }
+    
+    return isValid;
+  } catch (error) {
+    console.error('Captcha verification error:', error);
     return false;
   }
-  const isValid = captcha === captchaData.code;
-  if (isValid) {
-    captchaStore.delete(captchaId); // 验证成功后删除，防止重复使用
-  }
-  return isValid;
-};
+};;
 
 app.post('/api/submit', (req, res) => {
   upload(req, res, async (err) => {

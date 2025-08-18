@@ -1,0 +1,74 @@
+{
+  "folders": [
+    {
+      "name": "Frontend",
+      "path": "./frontend"
+    },
+    {
+      "name": "Backend", 
+      "path": "./backend"
+    },
+    {
+      "name": "Root",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "typescript.preferences.quoteStyle": "single",
+    "typescript.suggest.autoImports": true,
+    "typescript.updateImportsOnFileMove.enabled": "always",
+    
+    "eslint.validate": [
+      "javascript",
+      "javascriptreact", 
+      "typescript",
+      "typescriptreact",
+      "vue"
+    ],
+    "eslint.workingDirectories": [
+      "frontend",
+      "backend"
+    ],
+    
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit",
+      "source.organizeImports": "explicit"
+    },
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true,
+    
+    "[vue]": {
+      "editor.defaultFormatter": "Vue.volar"
+    },
+    "[typescript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[javascript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/.DS_Store": true,
+      "**/coverage": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "Vue.volar",
+      "Vue.vscode-typescript-vue-plugin",
+      "ms-vscode.vscode-typescript-next",
+      "esbenp.prettier-vscode",
+      "dbaeumer.vscode-eslint",
+      "ms-vscode.vscode-json",
+      "christian-kohler.path-intellisense",
+      "christian-kohler.npm-intellisense",
+      "eamodio.gitlens",
+      "ms-azuretools.vscode-docker",
+      "usernamehw.errorlens",
+      "ms-vscode.vscode-npm-script"
+    ]
+  }
+}
