@@ -19,10 +19,12 @@
 
       <!-- Description Field -->
       <enhanced-form-item label="问题描述" prop="description" :required="true" help-text="请详细描述问题现象、重现步骤和预期结果，至少10个字符"
-        :show-char-count="true" :max-length="5000" :current-length="feedbackStore.currentForm.description.length">
+        :show-char-count="true" :max-length="5000" :current-length="feedbackStore.currentForm.description.length"
+        :validation-state="formValidation.getFieldState('description')" :real-time-validation="true">
         <base-input v-model="feedbackStore.currentForm.description" type="textarea" placeholder="请详细描述问题现象、重现步骤和预期结果..."
           :rows="6" :maxlength="5000" show-word-limit :error-message="getFieldError('description')"
-          @validate="handleFieldValidation" />
+          :validation-state="formValidation.getFieldState('description')" :validate-on-input="true"
+          :validate-on-blur="true" :debounce-ms="500" @validate="value => handleDescriptionValidation(value)" />
       </enhanced-form-item>
 
       <!-- Contact Information -->
@@ -63,9 +65,7 @@
 
       <!-- Submit Actions -->
       <div class="form-actions">
-        <loading-progress v-if="appStore.loading.isLoading" :loading="appStore.loading.isLoading"
-          :progress="appStore.loading.progress" :message="appStore.loading.message" :error="appStore.loading.error"
-          :show-retry="true" @retry="handleRetry" />
+
 
         <div v-else class="action-buttons">
           <base-button type="primary" size="large" variant="gradient" :disabled="!feedbackStore.canSubmit"
@@ -82,11 +82,22 @@
           </base-button>
         </div>
 
+
+
         <!-- Form Status -->
         <div class="form-status" v-if="validationSummary.length > 0">
           <el-alert :title="`还有 ${validationSummary.length} 个问题需要解决`" type="warning" :closable="false" show-icon>
             <ul class="validation-list">
               <li v-for="issue in validationSummary" :key="issue">{{ issue }}</li>
+            </ul>
+          </el-alert>
+        </div>
+
+        <!-- Validation Warnings -->
+        <div class="form-warnings" v-if="validationWarnings.length > 0 && validationSummary.length === 0">
+          <el-alert title="建议优化" type="warning" :closable="true" show-icon>
+            <ul class="validation-list">
+              <li v-for="warning in validationWarnings" :key="warning">{{ warning }}</li>
             </ul>
           </el-alert>
         </div>
@@ -98,7 +109,7 @@
 <script setup lang="ts">
 import { RefreshLeft, Upload } from '@element-plus/icons-vue';
 import type { FormInstance } from 'element-plus';
-import { computed, nextTick, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, provide, ref } from 'vue';
 
 // Components
 import BugForm from '../BugForm.vue';
@@ -106,12 +117,13 @@ import CaptchaInput from '../CaptchaInput.vue';
 import ComplaintForm from '../ComplaintForm.vue';
 import EnhancedFileUpload from '../EnhancedFileUpload.vue';
 import EnhancedFormItem from '../EnhancedFormItem.vue';
-import LoadingProgress from '../LoadingProgress.vue';
 import SuggestionForm from '../SuggestionForm.vue';
 import BaseButton from '../common/BaseButton.vue';
 import BaseInput from '../common/BaseInput.vue';
 
 // Composables and Stores
+import { useFormValidation } from '@/composables/useFormValidation';
+import { useNotification } from '@/composables/useNotification';
 import { useStores } from '@/composables/useStores';
 import { createFormRules } from '@/utils/validation';
 
@@ -128,34 +140,48 @@ const captchaVerified = ref(false);
 // Form rules
 const formRules = createFormRules();
 
+// Composables
+const notification = useNotification();
+const formValidation = useFormValidation(formRef, formRules, {
+  immediate: false,
+  debounceMs: 500,
+  showWarnings: true,
+  validateOnInput: true,
+  validateOnBlur: true,
+});
+
+// Provide validation state to child components
+provide('validationState', formValidation.validationState);
+provide('isValidating', formValidation.isValidating);
+
 // Computed properties
 const validationSummary = computed(() => {
   const issues: string[] = [];
 
-  if (
-    !feedbackStore.currentForm.description ||
-    feedbackStore.currentForm.description.trim().length < 10
-  ) {
-    issues.push('问题描述至少需要10个字符');
+  // 从增强验证系统获取错误，但排除验证码字段（因为我们单独处理）
+  if (formValidation.hasErrors.value) {
+    const nonCaptchaErrors = formValidation.validationState.errors
+      .filter(e => e.field !== 'captcha')
+      .map(e => e.message);
+    issues.push(...nonCaptchaErrors);
   }
 
-  if (
-    feedbackStore.currentForm.email &&
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(feedbackStore.currentForm.email)
-  ) {
-    issues.push('邮箱格式不正确');
-  }
-
-  if (feedbackStore.currentForm.phone && !/^1[3-9]\d{9}$/.test(feedbackStore.currentForm.phone)) {
-    issues.push('手机号格式不正确');
-  }
-
+  // 检查验证码（只有在未验证时才显示错误）
   if (!captchaVerified.value) {
     issues.push('请完成验证码验证');
   }
 
   return issues;
 });
+
+const validationWarnings = computed(() => {
+  if (formValidation.hasWarnings.value) {
+    return formValidation.validationState.warnings.map(w => w.message);
+  }
+  return [];
+});
+
+
 
 // Event handlers
 const handleTabChange = (tabName: string) => {
@@ -181,17 +207,42 @@ const handleFormInput = () => {
   });
 };
 
-const handleFieldValidation = (prop: string, isValid: boolean, message: string) => {
-  if (!isValid && message) {
-    feedbackStore.setValidationError(prop, [message]);
-  } else {
-    feedbackStore.clearValidationError(prop);
+const handleFieldValidation = async (prop: string, isValid?: boolean, message?: string) => {
+  // 处理Element Plus表单验证事件
+  if (typeof isValid === 'boolean') {
+    if (!isValid && message) {
+      feedbackStore.setValidationError(prop, [message]);
+    } else {
+      feedbackStore.clearValidationError(prop);
+    }
+  }
+
+  // 实时验证
+  if (formValidation && feedbackStore.currentForm[prop] !== undefined) {
+    await formValidation.validateField(prop, feedbackStore.currentForm[prop], 'change');
+  }
+};
+
+const handleDescriptionValidation = async (value: string | number) => {
+  // 先清除旧的错误
+  feedbackStore.clearValidationError('description');
+
+  // 执行表单验证系统的验证
+  if (formValidation) {
+    await formValidation.validateField('description', value, 'input');
   }
 };
 
 const getFieldError = (field: string): string | undefined => {
-  const errors = feedbackStore.validationErrors[field];
-  return errors && errors.length > 0 ? errors[0] : undefined;
+  // 首先检查表单验证系统的错误
+  const formValidationError = formValidation.getFieldError(field);
+  if (formValidationError) {
+    return formValidationError.message;
+  }
+
+  // 然后检查store中的错误
+  const storeErrors = feedbackStore.validationErrors[field];
+  return storeErrors && storeErrors.length > 0 ? storeErrors[0] : undefined;
 };
 
 const submitForm = async () => {
@@ -202,36 +253,46 @@ const submitForm = async () => {
       timeout: 30000,
     });
 
-    // Validate form
-    const isValid = await formRef.value?.validate();
+    // 步骤1: 验证表单
+    appStore.updateLoadingProgress(20, '正在验证表单数据...');
+    const isValid = await formValidation.validateForm();
     if (!isValid) {
-      appStore.setLoadingError('表单验证失败，请检查输入内容');
-      appStore.showError('表单验证失败，请检查输入内容');
+      const errors = formValidation.validationState.errors.map(e => e.message);
+      appStore.setLoadingError('表单验证失败');
+      notification.showValidationError(errors);
       return;
     }
 
-    // Check captcha
+    // 步骤2: 验证验证码
+    appStore.updateLoadingProgress(40, '正在验证验证码...');
     if (!captchaVerified.value) {
       appStore.setLoadingError('请先完成验证码验证');
-      appStore.showError('请先完成验证码验证');
+      notification.error('请先完成验证码验证');
       return;
     }
 
-    // Submit through store
-    appStore.updateLoadingProgress(20, '正在验证数据...');
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    appStore.updateLoadingProgress(40, '正在上传文件...');
+    // 步骤3: 上传文件
+    appStore.updateLoadingProgress(60, '正在上传附件...');
     await new Promise(resolve => setTimeout(resolve, 800));
 
-    appStore.updateLoadingProgress(70, '正在提交到系统...');
+    // 步骤4: 提交到系统
+    appStore.updateLoadingProgress(80, '正在提交到系统...');
     const result = await feedbackStore.submitForm();
 
     if (result.success) {
+      // 步骤5: 完成
       appStore.updateLoadingProgress(100, '提交完成');
       appStore.finishLoading('提交完成');
 
-      appStore.showSuccess(`反馈提交成功！问题单编号：#${result.issueId}`, '提交成功');
+      notification.showCompletionSuccess('反馈提交', `问题单编号：#${result.issueId}`, 5000);
+
+      // 显示警告信息（如果有）
+      if (formValidation.hasWarnings.value) {
+        const warnings = formValidation.validationState.warnings.map(w => w.message);
+        setTimeout(() => {
+          notification.showValidationWarning(warnings);
+        }, 1000);
+      }
 
       // Reset form after success
       setTimeout(() => {
@@ -239,11 +300,11 @@ const submitForm = async () => {
       }, 2000);
     } else {
       appStore.setLoadingError(result.error || '提交失败');
-      appStore.showError(result.error || '提交失败', '提交失败');
+      notification.showOperationError('反馈提交', result.error);
     }
   } catch (error: any) {
     appStore.setLoadingError(error.message || '提交失败，请重试');
-    appStore.showError(error.message || '提交失败，请重试', '提交失败');
+    notification.showOperationError('反馈提交', error.message);
   }
 };
 
@@ -292,11 +353,24 @@ const beforeUpload = (file: File) => {
 const handleCaptchaVerified = (captchaId: string) => {
   captchaVerified.value = true;
   feedbackStore.clearValidationError('captcha');
+
+  // 清除表单验证系统中的验证码错误
+  if (formValidation) {
+    formValidation.clearValidation('captcha');
+  }
+
+  // 不要修改表单中的captcha字段值，保持用户输入的验证码
+  // 只需要记录验证成功的状态即可
+
   console.log('验证码验证成功:', captchaId);
 };
 
 const handleCaptchaError = (error: string) => {
   captchaVerified.value = false;
+
+  // 设置验证码错误到store和表单验证系统
+  feedbackStore.setValidationError('captcha', [error]);
+
   appStore.showError(`验证码错误: ${error}`);
 };
 
@@ -391,7 +465,13 @@ onMounted(() => {
   margin-bottom: var(--spacing-lg);
 }
 
+
+
 .form-status {
+  margin-top: var(--spacing-md);
+}
+
+.form-warnings {
   margin-top: var(--spacing-md);
 }
 
@@ -409,24 +489,64 @@ onMounted(() => {
 
 /* Mobile optimizations */
 @media (max-width: 767px) {
+  .feedback-form__inner {
+    padding: var(--spacing-md);
+  }
+
+  .form-tabs {
+    margin-bottom: var(--spacing-lg);
+  }
+
+  .form-tabs :deep(.el-tabs__header) {
+    margin-bottom: var(--spacing-md);
+  }
+
+  .form-tabs :deep(.el-tabs__nav-wrap) {
+    padding: 0;
+  }
+
+  .form-tabs :deep(.el-tabs__item) {
+    padding: var(--spacing-md) var(--spacing-lg);
+    font-size: var(--font-size-base);
+    min-height: var(--touch-target-size);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--border-radius-mobile) var(--border-radius-mobile) 0 0;
+    font-weight: 500;
+    transition: all var(--duration-normal) ease;
+  }
+
+  .form-tabs :deep(.el-tabs__item.is-active) {
+    background: var(--color-bg-primary);
+    color: var(--color-primary);
+    border-bottom: 2px solid var(--color-primary);
+    transform: translateY(-1px);
+  }
+
+  .form-tabs :deep(.el-tabs__item:active) {
+    transform: scale(0.98);
+    background: var(--color-bg-tertiary);
+  }
+
   .contact-section {
     margin: var(--spacing-xl) 0;
     padding: var(--spacing-lg);
+    border-radius: var(--border-radius-mobile-lg);
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border-primary);
+    box-shadow: var(--shadow-sm);
   }
 
   .contact-row {
     margin: 0;
     flex-direction: column;
+    gap: var(--spacing-lg);
   }
 
   .contact-col {
     padding: 0;
-    margin-bottom: var(--spacing-lg);
     width: 100% !important;
-  }
-
-  .contact-col:last-child {
-    margin-bottom: 0;
   }
 
   .action-buttons {
@@ -436,6 +556,10 @@ onMounted(() => {
   .form-actions {
     padding: var(--spacing-xl);
     margin-top: var(--spacing-xl);
+    border-radius: var(--border-radius-mobile-lg);
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border-primary);
+    box-shadow: var(--shadow-sm);
   }
 
   .section-title {
@@ -443,6 +567,132 @@ onMounted(() => {
     align-items: flex-start;
     gap: var(--spacing-xs);
     text-align: left;
+    font-size: var(--font-size-lg);
+    margin-bottom: var(--spacing-lg);
+  }
+
+  .optional-text {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    font-weight: 400;
+  }
+
+
+
+  .form-status,
+  .form-warnings {
+    margin-top: var(--spacing-lg);
+  }
+
+  .form-status :deep(.el-alert),
+  .form-warnings :deep(.el-alert) {
+    border-radius: var(--border-radius-mobile);
+    padding: var(--spacing-lg);
+    border: 1px solid var(--color-border-primary);
+  }
+
+  .form-status :deep(.el-alert__title),
+  .form-warnings :deep(.el-alert__title) {
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .validation-list {
+    margin: var(--spacing-md) 0 0 0;
+    padding-left: var(--spacing-lg);
+    text-align: left;
+  }
+
+  .validation-list li {
+    margin-bottom: var(--spacing-sm);
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-relaxed);
+    color: var(--color-text-secondary);
+  }
+}
+
+/* Extra small mobile devices */
+@media (max-width: 479px) {
+  .feedback-form__inner {
+    padding: var(--spacing-sm);
+  }
+
+  .contact-section {
+    padding: var(--spacing-md);
+    margin: var(--spacing-lg) 0;
+  }
+
+  .form-actions {
+    padding: var(--spacing-lg);
+  }
+
+  .section-title {
+    font-size: var(--font-size-base);
+    margin-bottom: var(--spacing-md);
+  }
+
+  .form-tabs :deep(.el-tabs__item) {
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--font-size-sm);
+  }
+}
+
+/* Tablet optimizations */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .contact-row {
+    margin: 0 calc(var(--spacing-md) * -1);
+    gap: 0;
+  }
+
+  .contact-col {
+    padding: 0 var(--spacing-md);
+  }
+
+  .form-actions {
+    padding: var(--spacing-xl) var(--spacing-2xl);
+  }
+
+  .action-buttons {
+    flex-direction: row;
+    gap: var(--spacing-xl);
+  }
+
+  .action-buttons .el-button {
+    flex: 1;
+  }
+}
+
+/* Desktop optimizations */
+@media (min-width: 1024px) {
+  .feedback-form__inner {
+    padding: var(--spacing-xl);
+  }
+
+  .contact-section {
+    padding: var(--spacing-xl);
+  }
+
+  .form-actions {
+    padding: var(--spacing-2xl);
+  }
+
+  .action-buttons {
+    flex-direction: row;
+    gap: var(--spacing-xl);
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .action-buttons .el-button {
+    flex: 1;
+    min-height: 48px;
+  }
+
+  .form-tabs :deep(.el-tabs__item):hover {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+    transform: translateY(-1px);
   }
 }
 </style>

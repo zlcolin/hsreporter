@@ -20,15 +20,23 @@
       </div>
 
       <!-- 实时错误提示 -->
-      <transition name="error-fade">
+      <transition name="message-fade">
         <div v-if="hasError && showError" class="error-message">
           <el-icon><warning /></el-icon>
           <span>{{ errorMessage }}</span>
         </div>
       </transition>
 
+      <!-- 警告提示 -->
+      <transition name="message-fade">
+        <div v-if="hasWarning && showWarning && !hasError" class="warning-message">
+          <el-icon><warning-filled /></el-icon>
+          <span>{{ warningMessage }}</span>
+        </div>
+      </transition>
+
       <!-- 帮助文本 -->
-      <div v-if="helpText && !hasError" class="help-text">
+      <div v-if="helpText && !hasError && !hasWarning" class="help-text">
         {{ helpText }}
       </div>
 
@@ -45,8 +53,8 @@
 </template>
 
 <script setup lang="ts">
+import { CircleCheck, CircleClose, Loading, Warning, WarningFilled } from '@element-plus/icons-vue';
 import { computed, inject } from 'vue';
-import { Loading, CircleClose, CircleCheck, Warning } from '@element-plus/icons-vue';
 
 interface Props {
   label: string;
@@ -55,17 +63,23 @@ interface Props {
   helpText?: string;
   showValidationIcon?: boolean;
   showError?: boolean;
+  showWarning?: boolean;
   showCharCount?: boolean;
   maxLength?: number;
   currentLength?: number;
+  validationState?: 'idle' | 'validating' | 'valid' | 'invalid';
+  realTimeValidation?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   required: false,
   showValidationIcon: true,
   showError: true,
+  showWarning: true,
   showCharCount: false,
   currentLength: 0,
+  validationState: 'idle',
+  realTimeValidation: true,
 });
 
 // 从父组件注入验证状态
@@ -83,6 +97,17 @@ const errorMessage = computed(() => {
   return error?.message || '';
 });
 
+const hasWarning = computed(() => {
+  if (!validationState) return false;
+  return validationState.warnings?.some((warning: any) => warning.field === props.prop) || false;
+});
+
+const warningMessage = computed(() => {
+  if (!validationState) return '';
+  const warning = validationState.warnings?.find((warning: any) => warning.field === props.prop);
+  return warning?.message || '';
+});
+
 const touched = computed(() => {
   if (!validationState) return false;
   return validationState.touched[props.prop] || false;
@@ -90,6 +115,16 @@ const touched = computed(() => {
 
 const isValid = computed(() => {
   return touched.value && !hasError.value;
+});
+
+const currentValidationState = computed(() => {
+  if (props.validationState !== 'idle') {
+    return props.validationState;
+  }
+  if (isValidating) return 'validating';
+  if (hasError.value) return 'invalid';
+  if (isValid.value) return 'valid';
+  return 'idle';
 });
 
 const isOverLimit = computed(() => {
@@ -162,6 +197,16 @@ const formItemClass = computed(() => {
   line-height: 1.4;
 }
 
+.warning-message {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--el-color-warning);
+  line-height: 1.4;
+}
+
 .help-text {
   margin-top: 4px;
   font-size: 12px;
@@ -182,14 +227,14 @@ const formItemClass = computed(() => {
   color: var(--el-color-danger);
 }
 
-/* 错误提示动画 */
-.error-fade-enter-active,
-.error-fade-leave-active {
+/* 消息提示动画 */
+.message-fade-enter-active,
+.message-fade-leave-active {
   transition: all 0.3s ease;
 }
 
-.error-fade-enter-from,
-.error-fade-leave-to {
+.message-fade-enter-from,
+.message-fade-leave-to {
   opacity: 0;
   transform: translateY(-10px);
 }

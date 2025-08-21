@@ -251,6 +251,182 @@ export function addDeviceClasses(): void {
   document.body.classList.add(...classes);
 }
 
+// Enhanced mobile keyboard handling
+export function handleMobileKeyboard(): () => void {
+  const initialViewportHeight = window.innerHeight;
+
+  const handleResize = () => {
+    const currentHeight = window.innerHeight;
+    const heightDifference = initialViewportHeight - currentHeight;
+
+    // If height decreased significantly, keyboard is likely open
+    if (heightDifference > 150) {
+      document.body.classList.add('keyboard-open');
+      document.documentElement.style.setProperty('--keyboard-height', `${heightDifference}px`);
+    } else {
+      document.body.classList.remove('keyboard-open');
+      document.documentElement.style.removeProperty('--keyboard-height');
+    }
+  };
+
+  window.addEventListener('resize', handleResize);
+
+  return () => {
+    window.removeEventListener('resize', handleResize);
+    document.body.classList.remove('keyboard-open');
+    document.documentElement.style.removeProperty('--keyboard-height');
+  };
+}
+
+// Enhanced scroll behavior for mobile
+export function enhanceMobileScroll(): () => void {
+  // Prevent overscroll bounce on iOS
+  const preventOverscroll = (e: TouchEvent) => {
+    const target = e.target as HTMLElement;
+    const scrollable = target.closest('.scrollable') || document.body;
+
+    if (scrollable.scrollTop === 0 && e.touches[0].clientY > e.touches[0].clientY) {
+      e.preventDefault();
+    }
+
+    if (
+      scrollable.scrollTop >= scrollable.scrollHeight - scrollable.clientHeight &&
+      e.touches[0].clientY < e.touches[0].clientY
+    ) {
+      e.preventDefault();
+    }
+  };
+
+  document.addEventListener('touchmove', preventOverscroll, { passive: false });
+
+  return () => {
+    document.removeEventListener('touchmove', preventOverscroll);
+  };
+}
+
+// Enhanced form input handling for mobile
+export function enhanceMobileFormInputs(): () => void {
+  const inputs = document.querySelectorAll('input, textarea, select');
+
+  const handleFocus = (e: Event) => {
+    const target = e.target as HTMLElement;
+    target.classList.add('mobile-focused');
+
+    // Scroll input into view on mobile
+    if (window.innerWidth <= 767) {
+      setTimeout(() => {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    }
+  };
+
+  const handleBlur = (e: Event) => {
+    const target = e.target as HTMLElement;
+    target.classList.remove('mobile-focused');
+  };
+
+  inputs.forEach(input => {
+    input.addEventListener('focus', handleFocus);
+    input.addEventListener('blur', handleBlur);
+  });
+
+  return () => {
+    inputs.forEach(input => {
+      input.removeEventListener('focus', handleFocus);
+      input.removeEventListener('blur', handleBlur);
+    });
+  };
+}
+
+// Performance optimization for mobile
+export function optimizeMobilePerformance(): () => void {
+  // Reduce animation frame rate on low-end devices
+  const isLowEndDevice =
+    navigator.hardwareConcurrency <= 2 || (navigator as unknown).deviceMemory <= 2;
+
+  if (isLowEndDevice) {
+    document.body.classList.add('low-end-device');
+    document.documentElement.style.setProperty('--animation-duration-multiplier', '0.5');
+  }
+
+  // Optimize images for mobile
+  const images = document.querySelectorAll('img');
+  const imageObserver = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const img = entry.target as HTMLImageElement;
+        if (img.dataset.src) {
+          img.src = img.dataset.src;
+          img.removeAttribute('data-src');
+          imageObserver.unobserve(img);
+        }
+      }
+    });
+  });
+
+  images.forEach(img => {
+    if (img.dataset.src) {
+      imageObserver.observe(img);
+    }
+  });
+
+  return () => {
+    imageObserver.disconnect();
+    document.body.classList.remove('low-end-device');
+    document.documentElement.style.removeProperty('--animation-duration-multiplier');
+  };
+}
+
+// Enhanced touch gesture detection
+export function setupEnhancedTouchGestures(): () => void {
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchStartTime = 0;
+
+  const handleTouchStart = (e: TouchEvent) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    touchStartTime = Date.now();
+  };
+
+  const handleTouchEnd = (e: TouchEvent) => {
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+    const touchEndTime = Date.now();
+
+    const deltaX = touchEndX - touchStartX;
+    const deltaY = touchEndY - touchStartY;
+    const deltaTime = touchEndTime - touchStartTime;
+
+    // Detect swipe gestures
+    if (Math.abs(deltaX) > 50 && deltaTime < 300) {
+      const direction = deltaX > 0 ? 'right' : 'left';
+      document.dispatchEvent(
+        new CustomEvent('swipe', {
+          detail: { direction, deltaX, deltaY, deltaTime },
+        })
+      );
+    }
+
+    // Detect long press
+    if (deltaTime > 500 && Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) {
+      document.dispatchEvent(
+        new CustomEvent('longpress', {
+          detail: { x: touchStartX, y: touchStartY, deltaTime },
+        })
+      );
+    }
+  };
+
+  document.addEventListener('touchstart', handleTouchStart, { passive: true });
+  document.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+  return () => {
+    document.removeEventListener('touchstart', handleTouchStart);
+    document.removeEventListener('touchend', handleTouchEnd);
+  };
+}
+
 // Initialize mobile optimizations
 export function initMobileOptimizations(): () => void {
   const cleanupFunctions: Array<() => void> = [];
@@ -263,6 +439,13 @@ export function initMobileOptimizations(): () => void {
 
   // Prevent zoom on double tap
   cleanupFunctions.push(preventZoom());
+
+  // Enhanced mobile features
+  cleanupFunctions.push(handleMobileKeyboard());
+  cleanupFunctions.push(enhanceMobileScroll());
+  cleanupFunctions.push(enhanceMobileFormInputs());
+  cleanupFunctions.push(optimizeMobilePerformance());
+  cleanupFunctions.push(setupEnhancedTouchGestures());
 
   // Return cleanup function
   return () => {

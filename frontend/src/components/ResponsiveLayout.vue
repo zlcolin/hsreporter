@@ -32,8 +32,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
 import { useBreakpoints } from '@/composables/useBreakpoints';
+import { computed, ref } from 'vue';
 
 interface Props {
   containerSize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'full';
@@ -172,9 +172,10 @@ defineExpose({
   }
 }
 
-/* Mobile Styles */
+/* Enhanced Mobile Styles */
 .is-mobile .layout-main {
-  padding: var(--spacing-md) 0;
+  padding: var(--mobile-form-spacing) 0;
+  min-height: calc(100vh - var(--mobile-header-height));
 }
 
 .is-mobile .layout-header,
@@ -182,9 +183,20 @@ defineExpose({
   padding: var(--spacing-md) 0;
 }
 
+.is-mobile .layout-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
 .is-mobile .layout-sidebar {
   width: 100%;
   transform: translateX(-100%);
+  transition: transform var(--mobile-transition-normal) ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .is-mobile.has-sidebar .layout-main {
@@ -193,6 +205,29 @@ defineExpose({
 
 .is-mobile.has-sidebar .layout-sidebar {
   transform: translateX(0);
+}
+
+/* Enhanced mobile keyboard handling */
+.is-mobile.keyboard-open .layout-main {
+  height: calc(100vh - var(--keyboard-height, 0px) - var(--mobile-header-height));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Enhanced mobile safe area support */
+@supports (padding: max(0px)) {
+  .is-mobile .layout-header {
+    padding-top: max(var(--spacing-md), env(safe-area-inset-top));
+  }
+
+  .is-mobile .layout-main {
+    padding-left: max(var(--mobile-form-spacing), env(safe-area-inset-left));
+    padding-right: max(var(--mobile-form-spacing), env(safe-area-inset-right));
+  }
+
+  .is-mobile .layout-footer {
+    padding-bottom: max(var(--spacing-md), env(safe-area-inset-bottom));
+  }
 }
 
 /* Tablet Styles */
@@ -228,6 +263,7 @@ defineExpose({
   .container-sm {
     max-width: 540px;
   }
+
   .container-xs {
     max-width: 540px;
   }
@@ -237,9 +273,11 @@ defineExpose({
   .container-md {
     max-width: 720px;
   }
+
   .container-sm {
     max-width: 720px;
   }
+
   .container-xs {
     max-width: 720px;
   }
@@ -249,12 +287,15 @@ defineExpose({
   .container-lg {
     max-width: 960px;
   }
+
   .container-md {
     max-width: 960px;
   }
+
   .container-sm {
     max-width: 960px;
   }
+
   .container-xs {
     max-width: 960px;
   }
@@ -264,15 +305,19 @@ defineExpose({
   .container-xl {
     max-width: 1140px;
   }
+
   .container-lg {
     max-width: 1140px;
   }
+
   .container-md {
     max-width: 1140px;
   }
+
   .container-sm {
     max-width: 1140px;
   }
+
   .container-xs {
     max-width: 1140px;
   }

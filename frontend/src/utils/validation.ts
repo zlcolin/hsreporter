@@ -98,8 +98,9 @@ export function createFormRules(): FormRules {
       validators.length(10, 5000, '问题描述应在10-5000个字符之间'),
       validators.custom((rule, value, callback) => {
         if (value && value.trim().length < 10) {
-          callback(new Error('问题描述内容过于简单，请详细描述'));
+          callback(new Error('问题描述内容过于简单，请详细描述问题现象、重现步骤和预期结果'));
         } else {
+          // 基本长度验证通过，不再强制要求特定关键词
           callback();
         }
       }),
@@ -107,10 +108,21 @@ export function createFormRules(): FormRules {
 
     // 邮箱验证（可选）
     email: [
-      validators.email(),
+      validators.email('请输入正确的邮箱格式，如：user@example.com'),
       validators.custom((rule, value, callback) => {
-        if (value && value.includes('test') && process.env.NODE_ENV === 'production') {
-          callback(new Error('请使用真实邮箱地址'));
+        if (!value) {
+          callback(); // 邮箱是可选的
+          return;
+        }
+
+        // 检查常见的测试邮箱
+        const testEmails = ['test@', 'example@', 'demo@', 'fake@'];
+        const isTestEmail = testEmails.some(test => value.toLowerCase().includes(test));
+
+        if (isTestEmail && process.env.NODE_ENV === 'production') {
+          callback(new Error('请使用真实邮箱地址以便接收处理进度通知'));
+        } else if (value.length > 0 && value.length < 5) {
+          callback(new Error('邮箱地址过短，请检查是否完整'));
         } else {
           callback();
         }
@@ -119,10 +131,17 @@ export function createFormRules(): FormRules {
 
     // 手机号验证（可选）
     phone: [
-      validators.phone(),
+      validators.phone('请输入正确的手机号码格式，如：13800138000'),
       validators.custom((rule, value, callback) => {
-        if (value && value.startsWith('000')) {
+        if (!value) {
+          callback(); // 手机号是可选的
+          return;
+        }
+
+        if (value.startsWith('000') || value.startsWith('111')) {
           callback(new Error('请输入真实的手机号码'));
+        } else if (!/^1[3-9]\d{9}$/.test(value)) {
+          callback(new Error('手机号码格式不正确，应为11位数字且以1开头'));
         } else {
           callback();
         }
@@ -149,8 +168,12 @@ export function createFormRules(): FormRules {
       validators.required('请输入验证码'),
       validators.length(4, 4, '验证码为4位数字'),
       validators.custom((rule, value, callback) => {
-        if (value && !/^\d{4}$/.test(value)) {
-          callback(new Error('验证码只能包含数字'));
+        if (!value) {
+          callback(new Error('请输入验证码'));
+        } else if (!/^\d{4}$/.test(value)) {
+          callback(new Error('验证码只能包含4位数字'));
+        } else if (value === '0000' || value === '1234') {
+          callback(new Error('请输入图片中显示的验证码'));
         } else {
           callback();
         }

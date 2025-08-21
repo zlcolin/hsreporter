@@ -1,10 +1,15 @@
 <template>
   <div class="enhanced-upload">
-    <div ref="dropZone" class="upload-area" :class="{
-      'is-dragover': isDragOver,
-      'has-files': fileList.length > 0,
-      'is-disabled': disabled,
-    }" @click="triggerFileInput">
+    <div
+      ref="dropZone"
+      class="upload-area"
+      :class="{
+        'is-dragover': isDragOver,
+        'has-files': fileList.length > 0,
+        'is-disabled': disabled,
+      }"
+      @click="triggerFileInput"
+    >
       <!-- Drag and Drop Zone -->
       <div v-if="fileList.length === 0" class="upload-placeholder">
         <el-icon class="upload-icon" size="48">
@@ -20,8 +25,12 @@
 
       <!-- File List -->
       <div v-else class="file-list">
-        <div v-for="(file, index) in fileList" :key="file.uid" class="file-item"
-          :class="{ 'upload-error': file.status === 'fail' }">
+        <div
+          v-for="(file, index) in fileList"
+          :key="file.uid"
+          class="file-item"
+          :class="{ 'upload-error': file.status === 'fail' }"
+        >
           <div class="file-info">
             <el-icon class="file-icon">
               <document v-if="isDocument(file)" />
@@ -33,7 +42,10 @@
               <div class="file-name" :title="file.name">{{ file.name }}</div>
               <div class="file-meta">
                 <span class="file-size">{{ formatFileSize(file.size) }}</span>
-                <span v-if="file.compressionRatio && file.compressionRatio > 0" class="compression-info">
+                <span
+                  v-if="file.compressionRatio && file.compressionRatio > 0"
+                  class="compression-info"
+                >
                   (压缩率: {{ Math.round(file.compressionRatio * 100) }}%)
                 </span>
               </div>
@@ -53,7 +65,13 @@
             <el-icon v-else-if="file.status === 'fail'" class="status-icon error" size="16">
               <close />
             </el-icon>
-            <el-button v-if="!disabled" type="danger" size="small" text @click.stop="removeFile(index)">
+            <el-button
+              v-if="!disabled"
+              type="danger"
+              size="small"
+              text
+              @click.stop="removeFile(index)"
+            >
               <el-icon>
                 <delete />
               </el-icon>
@@ -74,12 +92,24 @@
     </div>
 
     <!-- Hidden File Input -->
-    <input ref="fileInput" type="file" :multiple="multiple" :accept="accept" style="display: none"
-      @change="handleFileSelect" />
+    <input
+      ref="fileInput"
+      type="file"
+      :multiple="multiple"
+      :accept="accept"
+      style="display: none"
+      @change="handleFileSelect"
+    />
 
     <!-- Upload Tips -->
     <div v-if="showTips" class="upload-tips">
-      <el-alert v-if="errorMessage" :title="errorMessage" type="error" :closable="false" show-icon />
+      <el-alert
+        v-if="errorMessage"
+        :title="errorMessage"
+        type="error"
+        :closable="false"
+        show-icon
+      />
       <div v-else class="tips-content">
         <el-icon><info-filled /></el-icon>
         <span>{{ tipsText }}</span>

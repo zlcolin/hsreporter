@@ -1,12 +1,20 @@
 <template>
-  <el-button :type="type" :size="size" :disabled="disabled" :loading="loading" :icon="icon" :class="[
-    'base-button',
-    `base-button--${variant}`,
-    {
-      'base-button--block': block,
-      'base-button--rounded': rounded,
-    },
-  ]" @click="handleClick">
+  <el-button
+    :type="type"
+    :size="size"
+    :disabled="disabled"
+    :loading="loading"
+    :icon="icon"
+    :class="[
+      'base-button',
+      `base-button--${variant}`,
+      {
+        'base-button--block': block,
+        'base-button--rounded': rounded,
+      },
+    ]"
+    @click="handleClick"
+  >
     <slot />
   </el-button>
 </template>

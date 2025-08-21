@@ -13,6 +13,97 @@ export interface ApiResponse<T = any> {
   requestId: string;
 }
 
+// 缓存配置接口
+export interface CacheConfig {
+  ttl?: number; // 缓存时间（毫秒）
+  key?: string; // 自定义缓存键
+  enabled?: boolean; // 是否启用缓存
+}
+
+// 重试配置接口
+export interface RetryConfig {
+  retries?: number; // 重试次数
+  retryDelay?: number; // 重试延迟（毫秒）
+  retryCondition?: (error: any) => boolean; // 重试条件
+}
+
+// 请求配置扩展
+export interface EnhancedRequestConfig extends AxiosRequestConfig {
+  cache?: CacheConfig;
+  retry?: RetryConfig;
+  skipInterceptors?: boolean;
+}
+
+// 缓存项接口
+interface CacheItem<T = any> {
+  data: T;
+  timestamp: number;
+  ttl: number;
+}
+
+// 内存缓存管理
+class MemoryCache {
+  private cache = new Map<string, CacheItem>();
+
+  set<T>(key: string, data: T, ttl: number = 5 * 60 * 1000): void {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      ttl,
+    });
+  }
+
+  get<T>(key: string): T | null {
+    const item = this.cache.get(key);
+    if (!item) return null;
+
+    const now = Date.now();
+    if (now - item.timestamp > item.ttl) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    return item.data as T;
+  }
+
+  delete(key: string): void {
+    this.cache.delete(key);
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+
+  has(key: string): boolean {
+    const item = this.cache.get(key);
+    if (!item) return false;
+
+    const now = Date.now();
+    if (now - item.timestamp > item.ttl) {
+      this.cache.delete(key);
+      return false;
+    }
+
+    return true;
+  }
+
+  // 清理过期缓存
+  cleanup(): void {
+    const now = Date.now();
+    for (const [key, item] of this.cache.entries()) {
+      if (now - item.timestamp > item.ttl) {
+        this.cache.delete(key);
+      }
+    }
+  }
+}
+
+// 创建缓存实例
+const cache = new MemoryCache();
+
+// 定期清理过期缓存
+setInterval(() => cache.cleanup(), 60000); // 每分钟清理一次
+
 // 创建axios实例
 export const apiClient: AxiosInstance = axios.create({
   baseURL: process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3000/api',
@@ -118,47 +209,211 @@ apiClient.interceptors.response.use(
   }
 );
 
-// 通用API方法
-export const api = {
-  get: <T = any>(
-    url: string,
-    config?: AxiosRequestConfig
-  ): Promise<AxiosResponse<ApiResponse<T>>> => apiClient.get(url, config),
+// 重试逻辑
+const retryRequest = async (
+  requestFn: () => Promise<AxiosResponse>,
+  config: RetryConfig = {}
+): Promise<AxiosResponse> => {
+  const { retries = 3, retryDelay = 1000, retryCondition } = config;
 
-  post: <T = any>(
-    url: string,
-    data?: any,
-    config?: AxiosRequestConfig
-  ): Promise<AxiosResponse<ApiResponse<T>>> => apiClient.post(url, data, config),
+  let lastError: any;
 
-  put: <T = any>(
-    url: string,
-    data?: any,
-    config?: AxiosRequestConfig
-  ): Promise<AxiosResponse<ApiResponse<T>>> => apiClient.put(url, data, config),
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await requestFn();
+    } catch (error: any) {
+      lastError = error;
 
-  delete: <T = any>(
-    url: string,
-    config?: AxiosRequestConfig
-  ): Promise<AxiosResponse<ApiResponse<T>>> => apiClient.delete(url, config),
+      // 检查是否应该重试
+      const shouldRetry = retryCondition
+        ? retryCondition(error)
+        : error.code === 'NETWORK_ERROR' ||
+          error.response?.status >= 500 ||
+          error.response?.status === 429;
 
-  patch: <T = any>(
-    url: string,
-    data?: any,
-    config?: AxiosRequestConfig
-  ): Promise<AxiosResponse<ApiResponse<T>>> => apiClient.patch(url, data, config),
+      if (attempt === retries || !shouldRetry) {
+        throw error;
+      }
+
+      // 等待后重试
+      await new Promise(resolve => setTimeout(resolve, retryDelay * Math.pow(2, attempt)));
+    }
+  }
+
+  throw lastError;
 };
 
-// Specific API functions
+// 生成缓存键
+const generateCacheKey = (method: string, url: string, params?: any, data?: any): string => {
+  const key = `${method.toUpperCase()}:${url}`;
+  if (params) {
+    const paramStr = new URLSearchParams(params).toString();
+    return `${key}?${paramStr}`;
+  }
+  if (data) {
+    return `${key}:${JSON.stringify(data)}`;
+  }
+  return key;
+};
+
+// 增强的API方法
+export const api = {
+  get: async <T = any>(
+    url: string,
+    config: EnhancedRequestConfig = {}
+  ): Promise<AxiosResponse<ApiResponse<T>>> => {
+    const { cache: cacheConfig, retry: retryConfig, ...axiosConfig } = config;
+
+    // 检查缓存
+    if (cacheConfig?.enabled !== false) {
+      const cacheKey = cacheConfig?.key || generateCacheKey('GET', url, axiosConfig.params);
+      const cachedData = cache.get<AxiosResponse<ApiResponse<T>>>(cacheKey);
+
+      if (cachedData) {
+        return cachedData;
+      }
+
+      // 执行请求并缓存结果
+      const response = await retryRequest(() => apiClient.get(url, axiosConfig), retryConfig);
+
+      const ttl = cacheConfig?.ttl || 5 * 60 * 1000; // 默认5分钟
+      cache.set(cacheKey, response, ttl);
+
+      return response;
+    }
+
+    return retryRequest(() => apiClient.get(url, axiosConfig), retryConfig);
+  },
+
+  post: async <T = any>(
+    url: string,
+    data?: any,
+    config: EnhancedRequestConfig = {}
+  ): Promise<AxiosResponse<ApiResponse<T>>> => {
+    const { retry: retryConfig, ...axiosConfig } = config;
+    return retryRequest(() => apiClient.post(url, data, axiosConfig), retryConfig);
+  },
+
+  put: async <T = any>(
+    url: string,
+    data?: any,
+    config: EnhancedRequestConfig = {}
+  ): Promise<AxiosResponse<ApiResponse<T>>> => {
+    const { retry: retryConfig, ...axiosConfig } = config;
+    return retryRequest(() => apiClient.put(url, data, axiosConfig), retryConfig);
+  },
+
+  delete: async <T = any>(
+    url: string,
+    config: EnhancedRequestConfig = {}
+  ): Promise<AxiosResponse<ApiResponse<T>>> => {
+    const { retry: retryConfig, ...axiosConfig } = config;
+    return retryRequest(() => apiClient.delete(url, axiosConfig), retryConfig);
+  },
+
+  patch: async <T = any>(
+    url: string,
+    data?: any,
+    config: EnhancedRequestConfig = {}
+  ): Promise<AxiosResponse<ApiResponse<T>>> => {
+    const { retry: retryConfig, ...axiosConfig } = config;
+    return retryRequest(() => apiClient.patch(url, data, axiosConfig), retryConfig);
+  },
+
+  // 缓存管理方法
+  cache: {
+    get: <T>(key: string) => cache.get<T>(key),
+    set: <T>(key: string, data: T, ttl?: number) => cache.set(key, data, ttl),
+    delete: (key: string) => cache.delete(key),
+    clear: () => cache.clear(),
+    has: (key: string) => cache.has(key),
+  },
+};
+
+// 具体的API服务函数
 export const submitFeedback = async (formData: any): Promise<ApiResponse<{ issueId: number }>> => {
   try {
-    const response = await api.post<{ issueId: number }>('/submit', formData);
+    const response = await api.post<{ issueId: number }>('/submit', formData, {
+      retry: {
+        retries: 2,
+        retryDelay: 1000,
+        retryCondition: error => {
+          // 只对网络错误和服务器错误重试
+          return (
+            error.code === 'NETWORK_ERROR' ||
+            (error.response?.status >= 500 && error.response?.status !== 501)
+          );
+        },
+      },
+    });
     return response.data;
   } catch (error: any) {
-    // Return a standardized error response
     return {
       success: false,
       message: error.response?.data?.message || error.message || 'Submission failed',
+      error: {
+        code: error.response?.status?.toString() || 'NETWORK_ERROR',
+        details: error.response?.data,
+      },
+      timestamp: new Date().toISOString(),
+      requestId: error.config?.headers?.['X-Request-ID'] || '',
+    };
+  }
+};
+
+// 获取反馈状态
+export const getFeedbackStatus = async (
+  id: string
+): Promise<ApiResponse<{ status: string; issueId?: number }>> => {
+  try {
+    const response = await api.get<{ status: string; issueId?: number }>(`/feedback/${id}`, {
+      cache: {
+        enabled: true,
+        ttl: 30 * 1000, // 30秒缓存
+      },
+      retry: {
+        retries: 3,
+        retryDelay: 500,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.response?.data?.message || error.message || 'Failed to get feedback status',
+      error: {
+        code: error.response?.status?.toString() || 'NETWORK_ERROR',
+        details: error.response?.data,
+      },
+      timestamp: new Date().toISOString(),
+      requestId: error.config?.headers?.['X-Request-ID'] || '',
+    };
+  }
+};
+
+// 获取反馈统计
+export const getFeedbackStats = async (): Promise<
+  ApiResponse<{ total: number; byType: Record<string, number> }>
+> => {
+  try {
+    const response = await api.get<{ total: number; byType: Record<string, number> }>(
+      '/feedback/stats',
+      {
+        cache: {
+          enabled: true,
+          ttl: 5 * 60 * 1000, // 5分钟缓存
+        },
+        retry: {
+          retries: 2,
+          retryDelay: 1000,
+        },
+      }
+    );
+    return response.data;
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.response?.data?.message || error.message || 'Failed to get feedback stats',
       error: {
         code: error.response?.status?.toString() || 'NETWORK_ERROR',
         details: error.response?.data,

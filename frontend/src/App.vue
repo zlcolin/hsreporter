@@ -12,13 +12,23 @@
     </template>
 
     <div class="app-container">
-      <responsive-card class="form-card" :mobile-optimized="true" :full-height="false" shadow="auto" rounded="large">
+      <responsive-card
+        class="form-card"
+        :mobile-optimized="true"
+        :full-height="false"
+        shadow="auto"
+        rounded="large"
+      >
         <template #header>
           <div class="card-header">
             <h2 class="card-title">提交反馈</h2>
             <div class="form-progress" v-if="formProgress > 0">
-              <el-progress :percentage="formProgress" :stroke-width="isMobile ? 3 : 4" :show-text="false"
-                status="success" />
+              <el-progress
+                :percentage="formProgress"
+                :stroke-width="isMobile ? 3 : 4"
+                :show-text="false"
+                status="success"
+              />
               <span class="progress-text">完成度: {{ formProgress }}%</span>
             </div>
           </div>
@@ -160,24 +170,58 @@ onMounted(() => {
   min-height: 100vh;
 }
 
-/* Mobile Styles */
+/* Enhanced Mobile Styles */
 @media (max-width: 767px) {
   .app-title {
     font-size: var(--font-size-lg);
+    font-weight: 700;
+    line-height: var(--line-height-tight);
   }
 
   .header-content {
     flex-direction: row;
     justify-content: space-between;
-    padding: 0 var(--spacing-md);
+    padding: 0 var(--mobile-form-spacing);
+    align-items: center;
+    min-height: var(--mobile-header-height);
   }
 
   .card-header {
-    padding: var(--spacing-lg);
+    padding: var(--mobile-form-spacing);
+    text-align: center;
+    background: var(--color-bg-secondary);
+    border-bottom: 1px solid var(--color-border-primary);
   }
 
   .card-title {
     font-size: var(--font-size-xl);
+    margin-bottom: var(--spacing-md);
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  .form-card {
+    margin: var(--mobile-card-margin);
+    border-radius: var(--border-radius-mobile-lg);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--color-border-primary);
+    background: var(--color-bg-primary);
+    overflow: hidden;
+  }
+
+  .app-container {
+    padding: 0;
+    min-height: calc(100vh - var(--mobile-header-height));
+  }
+
+  .form-progress {
+    margin-top: var(--spacing-lg);
+  }
+
+  .progress-text {
+    font-size: var(--font-size-sm);
+    margin-top: var(--spacing-sm);
+    color: var(--color-text-secondary);
   }
 }
 
@@ -185,14 +229,25 @@ onMounted(() => {
 @media (max-width: 479px) {
   .header-content {
     padding: 0 var(--spacing-sm);
+    gap: var(--spacing-sm);
   }
 
   .app-title {
     font-size: var(--font-size-base);
+    font-weight: 700;
   }
 
   .card-title {
     font-size: var(--font-size-lg);
+  }
+
+  .form-card {
+    margin: var(--spacing-sm);
+    border-radius: var(--border-radius-mobile);
+  }
+
+  .card-header {
+    padding: var(--spacing-md);
   }
 }
 
@@ -239,15 +294,21 @@ onMounted(() => {
   background: linear-gradient(90deg, var(--color-primary), var(--color-primary-hover));
 }
 
-/* Safe Area Support for iOS */
+/* Enhanced Safe Area Support for iOS */
 @supports (padding: max(0px)) {
   .app-header {
     padding-top: max(var(--spacing-md), env(safe-area-inset-top));
   }
 
   .app-container {
-    padding-left: max(0px, env(safe-area-inset-left));
-    padding-right: max(0px, env(safe-area-inset-right));
+    padding-left: max(var(--spacing-md), env(safe-area-inset-left));
+    padding-right: max(var(--spacing-md), env(safe-area-inset-right));
+    padding-bottom: max(var(--spacing-lg), env(safe-area-inset-bottom));
+  }
+
+  .form-card {
+    margin-left: max(var(--spacing-md), env(safe-area-inset-left));
+    margin-right: max(var(--spacing-md), env(safe-area-inset-right));
   }
 }
 
@@ -277,6 +338,79 @@ onMounted(() => {
 @media (prefers-contrast: high) {
   .form-card {
     border: 2px solid var(--color-text-primary);
+  }
+
+  .app-title {
+    color: var(--color-text-primary);
+    font-weight: 700;
+  }
+}
+
+/* Dark Theme Enhancements */
+[data-theme='dark'] .app-header {
+  background: var(--color-bg-primary);
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+[data-theme='dark'] .form-card {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-primary);
+  box-shadow: var(--shadow-lg);
+}
+
+[data-theme='dark'] .card-header {
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+/* Enhanced Mobile Keyboard Handling */
+@media (max-width: 767px) {
+  .keyboard-open .app-container {
+    height: calc(100vh - var(--keyboard-height, 0px) - var(--mobile-header-height));
+    overflow-y: auto;
+  }
+
+  .keyboard-open .form-card {
+    margin-bottom: var(--spacing-xl);
+  }
+
+  /* Enhanced touch feedback */
+  .app-title:active {
+    transform: scale(0.98);
+    transition: transform var(--mobile-transition-fast) ease;
+  }
+
+  .header-actions button:active {
+    transform: scale(0.95);
+    transition: transform var(--mobile-transition-fast) ease;
+  }
+}
+
+/* Enhanced Performance Optimizations */
+.low-end-device .app-container {
+  animation-duration: calc(0.6s * var(--animation-duration-multiplier, 1));
+}
+
+.low-end-device .form-progress :deep(.el-progress-bar__inner) {
+  transition-duration: calc(0.6s * var(--animation-duration-multiplier, 1));
+}
+
+/* Auto Dark Theme Support */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .app-header {
+    background: var(--color-bg-primary);
+    border-bottom: 1px solid var(--color-border-primary);
+  }
+
+  :root:not([data-theme]) .form-card {
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border-primary);
+    box-shadow: var(--shadow-lg);
+  }
+
+  :root:not([data-theme]) .card-header {
+    background: var(--color-bg-secondary);
+    border-bottom: 1px solid var(--color-border-primary);
   }
 }
 </style>

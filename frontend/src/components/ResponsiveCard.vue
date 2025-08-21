@@ -25,8 +25,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
 import { useBreakpoints } from '@/composables/useBreakpoints';
+import { computed } from 'vue';
 
 interface Props {
   padding?: 'none' | 'small' | 'medium' | 'large' | 'auto';
@@ -105,8 +105,9 @@ const cardBodyStyle = computed(() => {
 
 /* Mobile Optimizations */
 .responsive-card--mobile {
-  border-radius: var(--border-radius-lg);
+  border-radius: var(--border-radius-mobile-lg);
   margin-bottom: var(--spacing-lg);
+  border: 1px solid var(--color-border-primary);
 }
 
 .responsive-card--mobile :deep(.el-card__header) {
@@ -121,11 +122,20 @@ const cardBodyStyle = computed(() => {
 
 .responsive-card--mobile-optimized {
   box-shadow: var(--shadow-md);
+  transition: all var(--duration-fast) ease;
 }
 
 .responsive-card--mobile-optimized:active {
   transform: scale(0.98);
   box-shadow: var(--shadow-sm);
+}
+
+/* Enhanced mobile touch feedback */
+@media (hover: none) and (pointer: coarse) {
+  .responsive-card--mobile-optimized:active {
+    transform: scale(0.995);
+    transition: transform var(--duration-fast) ease;
+  }
 }
 
 /* Tablet Optimizations */
@@ -290,6 +300,43 @@ const cardBodyStyle = computed(() => {
   .responsive-card--mobile-optimized {
     box-shadow: var(--shadow-lg);
     border: 1px solid var(--color-border-primary);
+    background: var(--color-bg-primary);
   }
+}
+
+[data-theme='dark'] .responsive-card {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-primary);
+  box-shadow: var(--shadow-lg);
+}
+
+[data-theme='dark'] .responsive-card--mobile-optimized {
+  box-shadow: var(--shadow-lg);
+}
+
+/* Enhanced responsive breakpoint styles */
+.responsive-card--xs {
+  border-radius: var(--border-radius-mobile);
+  margin: var(--spacing-sm);
+}
+
+.responsive-card--sm {
+  border-radius: var(--border-radius-mobile);
+  margin: var(--spacing-md);
+}
+
+.responsive-card--md {
+  border-radius: var(--border-radius-md);
+  margin: var(--spacing-lg);
+}
+
+.responsive-card--lg {
+  border-radius: var(--border-radius-lg);
+  margin: var(--spacing-xl);
+}
+
+.responsive-card--xl {
+  border-radius: var(--border-radius-lg);
+  margin: var(--spacing-2xl);
 }
 </style>

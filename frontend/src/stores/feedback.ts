@@ -1,4 +1,3 @@
-import { submitFeedback } from '@/services/api';
 import type { FormData } from '@/types/common';
 import type { SubmissionRecord } from '@/types/store';
 import { defineStore } from 'pinia';
@@ -144,12 +143,24 @@ export const useFeedbackStore = defineStore('feedback', () => {
       return { success: false, error: 'Form validation failed' };
     }
 
+    const appStore = useAppStore();
     isSubmitting.value = true;
 
-    try {
-      const response = await submitFeedback(currentForm.value);
+    // 显示加载状态
+    appStore.startLoading({
+      message: '正在提交反馈...',
+      showProgress: true,
+    });
 
-      if (response.success && response.data) {
+    try {
+      // 更新进度
+      appStore.updateLoadingProgress(30, '验证表单数据...');
+
+      const response = await feedbackService.submitFeedback(currentForm.value);
+
+      appStore.updateLoadingProgress(70, '处理提交结果...');
+
+      if (response.success && response.issueId) {
         const submissionRecord: SubmissionRecord = {
           id: crypto.randomUUID(),
           type: determineFormType(),
@@ -157,7 +168,7 @@ export const useFeedbackStore = defineStore('feedback', () => {
           description: currentForm.value.description,
           status: 'submitted',
           submittedAt: new Date(),
-          issueId: response.data.issueId,
+          issueId: response.issueId,
         };
 
         submissionHistory.value.unshift(submissionRecord);
@@ -170,12 +181,21 @@ export const useFeedbackStore = defineStore('feedback', () => {
           console.error('Failed to save submission history:', error);
         }
 
+        appStore.updateLoadingProgress(100, '提交完成');
         clearDraft();
-        return { success: true, issueId: response.data.issueId };
+
+        // 延迟完成加载状态以显示成功消息
+        setTimeout(() => {
+          appStore.finishLoading('反馈提交成功');
+        }, 500);
+
+        return { success: true, issueId: response.issueId };
       } else {
-        return { success: false, error: response.message || 'Submission failed' };
+        appStore.setLoadingError(response.error || '提交失败');
+        return { success: false, error: response.error || 'Submission failed' };
       }
     } catch (error: any) {
+      appStore.setLoadingError(error.message || '网络错误');
       return { success: false, error: error.message || 'Network error' };
     } finally {
       isSubmitting.value = false;

@@ -43,7 +43,7 @@
 
 <script setup lang="ts">
 import type { InputSize } from 'element-plus';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 interface Props {
   modelValue: string | number;
@@ -66,6 +66,9 @@ interface Props {
   helpText?: string;
   validateOnBlur?: boolean;
   validateOnInput?: boolean;
+  debounceMs?: number;
+  validationState?: 'idle' | 'validating' | 'valid' | 'invalid';
+  showValidationIcon?: boolean;
 }
 
 interface Emits {
@@ -88,19 +91,40 @@ const props = withDefaults(defineProps<Props>(), {
   size: 'default',
   validateOnBlur: true,
   validateOnInput: false,
+  debounceMs: 300,
+  validationState: 'idle',
+  showValidationIcon: true,
 });
 
 const emit = defineEmits<Emits>();
 
-const hasError = computed(() => !!props.errorMessage);
-const hasSuccess = computed(() => !!props.successMessage);
+const hasError = computed(() => !!props.errorMessage || props.validationState === 'invalid');
+const hasSuccess = computed(() => !!props.successMessage || props.validationState === 'valid');
+const isValidating = computed(() => props.validationState === 'validating');
+
+// Debounced validation
+const debounceTimer = ref<NodeJS.Timeout>();
+
+const debouncedValidate = (value: string | number) => {
+  if (debounceTimer.value) {
+    clearTimeout(debounceTimer.value);
+  }
+
+  debounceTimer.value = setTimeout(() => {
+    emit('validate', value);
+  }, props.debounceMs);
+};
 
 const handleInput = (value: string | number) => {
   emit('update:modelValue', value);
   emit('input', value);
 
   if (props.validateOnInput) {
-    emit('validate', value);
+    if (props.debounceMs > 0) {
+      debouncedValidate(value);
+    } else {
+      emit('validate', value);
+    }
   }
 };
 

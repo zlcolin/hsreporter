@@ -1,98 +1,72 @@
 <template>
   <div class="captcha-container">
-    <el-form-item label="验证码" prop="captcha" :error="captchaError">
-      <div class="captcha-input-group">
-        <el-input
-          v-model="captchaCode"
-          placeholder="请输入图片中的数字"
-          inputmode="numeric"
-          maxlength="4"
-          :disabled="loading"
-          @input="handleInput"
-          @keyup.enter="handleVerify"
-          class="captcha-input"
-        >
-          <template #suffix>
-            <el-icon v-if="verifying" class="is-loading">
-              <loading />
-            </el-icon>
-            <el-icon v-else-if="verified" class="success-icon">
-              <check />
-            </el-icon>
-          </template>
-        </el-input>
+    <div class="captcha-input-group">
+      <el-input v-model="captchaCode" placeholder="请输入图片中的数字" inputmode="numeric" maxlength="4" :disabled="loading"
+        @input="handleInput" @keyup.enter="handleVerify" class="captcha-input">
+        <template #suffix>
+          <el-icon v-if="verifying" class="is-loading">
+            <loading />
+          </el-icon>
+          <el-icon v-else-if="verified" class="success-icon">
+            <check />
+          </el-icon>
+        </template>
+      </el-input>
 
-        <div class="captcha-image-container">
-          <div
-            v-if="loading"
-            class="captcha-loading"
-            v-loading="loading"
-            element-loading-text="加载中..."
-          >
-            <div class="loading-placeholder"></div>
-          </div>
-
-          <img
-            v-else-if="captchaImageUrl"
-            :src="captchaImageUrl"
-            alt="验证码"
-            class="captcha-image"
-            @click="refreshCaptcha"
-            :title="refreshTooltip"
-          />
-
-          <div v-else class="captcha-error" @click="refreshCaptcha">
-            <el-icon><refresh-right /></el-icon>
-            <span>点击重新加载</span>
-          </div>
+      <div class="captcha-image-container">
+        <div v-if="loading" class="captcha-loading" v-loading="loading" element-loading-text="加载中...">
+          <div class="loading-placeholder"></div>
         </div>
 
-        <el-button
-          type="primary"
-          :icon="RefreshRight"
-          :loading="loading"
-          @click="refreshCaptcha"
-          class="refresh-button"
-          :title="refreshTooltip"
-        >
-          刷新
-        </el-button>
+        <img v-else-if="captchaImageUrl" :src="captchaImageUrl" alt="验证码" class="captcha-image" @click="refreshCaptcha"
+          :title="refreshTooltip" />
+
+        <div v-else class="captcha-error" @click="refreshCaptcha">
+          <el-icon><refresh-right /></el-icon>
+          <span>点击重新加载</span>
+        </div>
       </div>
 
-      <!-- 验证码状态提示 -->
-      <div v-if="statusMessage" class="captcha-status" :class="statusClass">
-        <el-icon>
-          <info-filled v-if="statusType === 'info'" />
-          <success-filled v-else-if="statusType === 'success'" />
-          <warning-filled v-else-if="statusType === 'warning'" />
-          <circle-close-filled v-else-if="statusType === 'error'" />
-        </el-icon>
-        <span>{{ statusMessage }}</span>
-      </div>
+      <el-button type="primary" :icon="RefreshRight" :loading="loading" @click="refreshCaptcha" class="refresh-button"
+        :title="refreshTooltip">
+        刷新
+      </el-button>
+    </div>
 
-      <!-- 过期倒计时 -->
-      <div v-if="showCountdown && timeRemaining > 0" class="captcha-countdown">
-        <el-icon><clock /></el-icon>
-        <span>验证码将在 {{ formatTime(timeRemaining) }} 后过期</span>
-      </div>
-    </el-form-item>
+    <!-- 验证码状态提示 -->
+    <div v-if="statusMessage" class="captcha-status" :class="statusClass">
+      <el-icon>
+        <info-filled v-if="statusType === 'info'" />
+        <success-filled v-else-if="statusType === 'success'" />
+        <warning-filled v-else-if="statusType === 'warning'" />
+        <circle-close-filled v-else-if="statusType === 'error'" />
+      </el-icon>
+      <span>{{ statusMessage }}</span>
+    </div>
+
+    <!-- 过期倒计时 -->
+    <div v-if="showCountdown && timeRemaining > 0" class="captcha-countdown">
+      <el-icon>
+        <clock />
+      </el-icon>
+      <span>验证码将在 {{ formatTime(timeRemaining) }} 后过期</span>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-import { ElMessage } from 'element-plus';
+import { captchaApi } from '@/services/captchaApi';
 import {
-  RefreshRight,
-  Loading,
   Check,
-  InfoFilled,
-  SuccessFilled,
-  WarningFilled,
   CircleCloseFilled,
   Clock,
+  InfoFilled,
+  Loading,
+  RefreshRight,
+  SuccessFilled,
+  WarningFilled,
 } from '@element-plus/icons-vue';
-import { captchaApi } from '@/services/captchaApi';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 interface Props {
   modelValue?: string;
@@ -140,7 +114,7 @@ const refreshTooltip = computed(() => (loading.value ? '加载中...' : '点击�
 watch(
   () => props.modelValue,
   newValue => {
-    captchaCode.value = newValue;
+    captchaCode.value = newValue || '';
   }
 );
 

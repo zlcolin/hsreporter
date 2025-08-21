@@ -13,6 +13,7 @@ import 'element-plus/dist/index.css';
 import * as ElementPlusIconsVue from '@element-plus/icons-vue';
 
 // 引入自定义样式
+import './assets/styles/mobile-enhancements.css';
 import './assets/styles/responsive.css';
 import './assets/styles/variables.css';
 

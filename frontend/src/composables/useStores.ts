@@ -25,3 +25,9 @@ export function useApp() {
 export function useUser() {
   return useUserStore();
 }
+
+// Enhanced composables
+export { useApi, useCachedApi, useInfiniteApi, usePaginatedApi } from './useApi';
+export { useAutoSave, useDataSync, useMultiDataSync } from './useDataSync';
+export { useEnhancedFeedback, useSimpleFeedback } from './useEnhancedFeedback';
+export { useFeedbackApi, useFeedbackStatusPolling } from './useFeedbackApi';
