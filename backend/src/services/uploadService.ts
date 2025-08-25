@@ -1,5 +1,5 @@
 import { AppError } from "@/middleware/errorHandler";
-import logger from "@/utils/logger";
+import { logger } from "@/utils/logger";
 import { fromBuffer as fileTypeFromBuffer } from "file-type";
 import fs from "fs";
 import path from "path";

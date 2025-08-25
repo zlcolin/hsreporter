@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { CaptchaService } from '../services/captchaService';
 import { logger } from '../utils/logger';
+import { v4 as uuidv4 } from 'uuid';
 
 export class CaptchaController {
   private captchaService: CaptchaService;
@@ -15,6 +16,7 @@ export class CaptchaController {
   generateCaptcha = async (req: Request, res: Response): Promise<void> => {
     try {
       const result = await this.captchaService.generateCaptcha();
+      const requestId = uuidv4();
       
       logger.info('Captcha generated successfully', {
         captchaId: result.captchaId,
@@ -29,7 +31,8 @@ export class CaptchaController {
           captchaId: result.captchaId,
           expiresIn: result.expiresIn
         },
-        message: '验证码生成成功'
+        message: '验证码生成成功',
+        requestId
       });
     } catch (error) {
       logger.error('Failed to generate captcha', {

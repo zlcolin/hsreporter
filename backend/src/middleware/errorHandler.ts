@@ -22,6 +22,9 @@ export const getErrorMessage = (err: Error): string => {
   if (err instanceof AppError) {
     return err.message;
   }
+  if (err.name === 'SyntaxError' && err.message.includes('JSON')) {
+    return '请求数据格式错误，请提供有效的JSON';
+  }
   if (err.name === 'MulterError') {
     return '文件上传错误: ' + err.message;
   }
@@ -41,6 +44,9 @@ export const getErrorCode = (err: Error): string => {
   if (err instanceof AppError) {
     return err.code;
   }
+  if (err.name === 'SyntaxError' && err.message.includes('JSON')) {
+    return 'INVALID_JSON_FORMAT';
+  }
   if (err.name === 'MulterError') {
     return 'FILE_UPLOAD_ERROR';
   }
@@ -59,6 +65,9 @@ export const getStatusCode = (err: Error): number => {
   }
   if (err instanceof AppError) {
     return err.statusCode;
+  }
+  if (err.name === 'SyntaxError' && err.message.includes('JSON')) {
+    return 400;
   }
   if (err.name === 'MulterError') {
     return 400;

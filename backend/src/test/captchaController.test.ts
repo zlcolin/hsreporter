@@ -222,14 +222,18 @@ describe('CaptchaController Integration Tests', () => {
 
   describe('Error handling', () => {
     it('should handle malformed JSON', async () => {
+      // 使用更明显的无效JSON格式
+      const invalidJson = '{"captchaId": "123", "code": "456",}'; // 末尾多了一个逗号
+
       const response = await request(app)
         .post('/api/v1/captcha/verify')
         .set('Content-Type', 'application/json')
-        .send('{"invalid": json}')
-        .expect(400);
+        .send(invalidJson);
 
-      // Express should handle malformed JSON and return 400
+      // 应该返回400状态码
       expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe('INVALID_JSON_FORMAT');
     });
 
     it('should handle large payloads gracefully', async () => {

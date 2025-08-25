@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
@@ -39,6 +39,18 @@ app.use('/api', apiLimiter);
 // Request parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// JSON parsing error handler
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  if (err instanceof SyntaxError && 'body' in err) {
+    // Create a custom error and pass it to the global error handler
+    const jsonError = new Error('Invalid JSON format');
+    jsonError.name = 'SyntaxError';
+    next(jsonError);
+  } else {
+    next(err);
+  }
+});
 
 // Request logging
 app.use(requestLogger);
